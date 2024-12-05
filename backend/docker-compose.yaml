@@ -1,0 +1,51 @@
+version: '3.7'
+
+services:
+  # Backend Service
+  backend:
+    image: backend:latest  # Make sure to build the 'backend' image before running this
+    ports:
+      - "5000:5000"  # Exposing port 5000 of the container to 5000 on the host
+    environment:
+      - MYSQL_HOST=db          # The 'db' service name is the hostname in the backend container
+      - MYSQL_USER=johndoe     # The MySQL user for authentication
+      - MYSQL_PASSWORD=apple   # Password for the MySQL user
+      - MYSQL_DATABASE=todo_db # Database name for your app
+    networks:
+      - todo_network
+    depends_on:
+      - db  # Ensure that the 'db' service is started before the backend starts
+    healthcheck:
+      test: ["CMD", "curl", "--silent", "--fail", "http://localhost:5000/health"] # Adjust this if your backend has a health endpoint
+      interval: 30s
+      retries: 3
+
+  # Frontend Service
+  frontend:
+    image: frontend:latest  # Ensure to build the 'frontend' image before running
+    ports:
+      - "3000:3000"  # Exposing port 3000 of the container to 3000 on the host
+    networks:
+      - todo_network
+    depends_on:
+      - backend  # Wait for the backend service to be available before starting frontend
+
+  # MySQL Database Service
+  db:
+    image: mysql:5.7  # MySQL version 5.7 image
+    environment:
+      MYSQL_ROOT_PASSWORD: apple  # Root password for MySQL
+      MYSQL_DATABASE: todo_db    # Default database name
+    ports:
+      - "3307:3306"  # Expose MySQL container's port 3306 to the host's port 3307
+    networks:
+      - todo_network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 30s
+      retries: 5
+
+networks:
+  todo_network:
+    driver: bridge  # Use the bridge driver for internal communication between containers
+
